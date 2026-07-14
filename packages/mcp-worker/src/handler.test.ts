@@ -1,6 +1,6 @@
 import { baseTranscribeConfigSchema } from "@spencer0124/rtzr-core";
 import { describe, expect, it, vi } from "vitest";
-import { buildTranscribeConfig, handleTranscribe, resolveAudioInput, resolveCredentials } from "./handler.js";
+import { buildTranscribeConfig, handleTranscribe, MCP_FIELD_LABELS, resolveAudioInput, resolveCredentials } from "./handler.js";
 
 const CREDS = { clientId: "id-1", clientSecret: "secret-1" };
 
@@ -190,6 +190,15 @@ describe("buildTranscribeConfig", () => {
       expect(cfg[field], `built config had an undefined ${field} — is a tool input field missing?`).not.toBeUndefined();
     }
   });
+
+  // Same drift guard as above, for the error-label map: a core field without a
+  // label would make validation errors leak the core-internal name (e.g.
+  // "spkCount") instead of the tool parameter the model sent ("speakers").
+  it("MCP_FIELD_LABELS labels every field in core's baseTranscribeConfigSchema", () => {
+    for (const field of Object.keys(baseTranscribeConfigSchema.shape)) {
+      expect(MCP_FIELD_LABELS[field], `no tool-param label for core field ${field}`).toBeTruthy();
+    }
+  });
 });
 
 describe("handleTranscribe", () => {
@@ -290,13 +299,17 @@ describe("handleTranscribe", () => {
   // docs/rtzr-config-constraints.md §3-A) — the rules themselves are covered
   // by core's schema.test.ts; these only check they surface as tool errors
   // before any API call.
-  it("rejects speakers without diarize before ever calling the RTZR API", async () => {
+  it("rejects speakers without diarize before ever calling the RTZR API, in tool-param vocabulary", async () => {
     const fetchImpl = vi.fn();
 
     const result = await handleTranscribe({ input: "aGk=", speakers: 2 }, CREDS, { fetchImpl });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/useDiarization/);
+    // names the params the calling model actually sent, not core internals —
+    // that's what lets it self-correct the next call
+    expect(result.content[0].text).toMatch(/speakers/);
+    expect(result.content[0].text).toMatch(/diarize/);
+    expect(result.content[0].text).not.toMatch(/spkCount|useDiarization/);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 

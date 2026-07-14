@@ -1,4 +1,4 @@
-import type { TranscribeConfig } from "@spencer0124/rtzr-core";
+import type { ConfigFieldLabels, TranscribeConfig } from "@spencer0124/rtzr-core";
 import { transcribeConfigSchema } from "@spencer0124/rtzr-core";
 
 export interface CliFlags {
@@ -20,6 +20,29 @@ export interface CliFlags {
   paragraphMax?: string;
   json?: boolean;
 }
+
+/**
+ * Core field name -> the flag the user actually typed, so validation errors
+ * suggest the fix in flag vocabulary ("--speakers requires --diarize") instead
+ * of core internals ("spkCount requires useDiarization"). Fed to core's
+ * formatConfigError by cli.ts's top-level catch. A coverage test asserts this
+ * map names every schema field (same drift guard as the mapping test below).
+ */
+export const CLI_FIELD_LABELS: ConfigFieldLabels = {
+  modelName: "--model",
+  language: "--language",
+  languageCandidates: "--language-candidates",
+  useDiarization: "--diarize",
+  spkCount: "--speakers",
+  keywords: "--keywords",
+  useItn: "--itn",
+  useDisfluencyFilter: "--disfluency-filter",
+  useProfanityFilter: "--profanity-filter",
+  useParagraphSplitter: "--paragraph-splitter",
+  paragraphSplitterMax: "--paragraph-max",
+  useWordTimestamp: "--word-timestamps",
+  domain: "--domain",
+};
 
 /**
  * Maps parsed CLI flags -> the shared `TranscribeConfig` (validated by core's

@@ -1,12 +1,12 @@
 import {
-  RtzrApiError,
+  formatConfigError,
   RtzrClient,
-  RtzrTimeoutError,
   toJson,
   toSrt,
   toTxt,
   toVtt,
   transcribeConfigSchema,
+  type ConfigFieldLabels,
   type TranscribeConfig,
 } from "@spencer0124/rtzr-core";
 
@@ -206,6 +206,30 @@ export interface HandleTranscribeOptions {
  * wordTimestamps/languageCandidates entirely, which is exactly the gap a
  * real client hit trying to request word timestamps (LESSONS.md).
  */
+/**
+ * Core field name -> this tool's input parameter name, so validation errors
+ * name the parameter the calling model actually sent ("speakers requires
+ * diarize") instead of core internals ("spkCount requires useDiarization") —
+ * that's what lets the model self-correct its next call. Fed to core's
+ * formatConfigError in handleTranscribe; a coverage test asserts this map
+ * names every schema field (same drift guard as buildTranscribeConfig's).
+ */
+export const MCP_FIELD_LABELS: ConfigFieldLabels = {
+  modelName: "model",
+  language: "language",
+  languageCandidates: "languageCandidates",
+  useDiarization: "diarize",
+  spkCount: "speakers",
+  keywords: "keywords",
+  useItn: "itn",
+  useDisfluencyFilter: "disfluencyFilter",
+  useProfanityFilter: "profanityFilter",
+  useParagraphSplitter: "paragraphSplitter",
+  paragraphSplitterMax: "paragraphSplitterMax",
+  useWordTimestamp: "wordTimestamps",
+  domain: "domain",
+};
+
 export function buildTranscribeConfig(toolInput: TranscribeToolInput): TranscribeConfig {
   // Mirror the CLI's `-l/--language` default of "ko" (docs/concept.md §8.1) — except
   // when modelName is "whisper" and no language was given: silently defaulting there
@@ -247,7 +271,7 @@ export async function handleTranscribe(
 
   const validated = transcribeConfigSchema.safeParse(cfg);
   if (!validated.success) {
-    return textResult(`Invalid transcribe options: ${validated.error.issues.map((i) => i.message).join("; ")}`, true);
+    return textResult(`Invalid transcribe options: ${formatConfigError(validated.error, MCP_FIELD_LABELS)}`, true);
   }
 
   const fetchImpl = opts.fetchImpl;
@@ -277,15 +301,9 @@ export async function handleTranscribe(
 
     return textResult(text);
   } catch (err) {
-    if (err instanceof RtzrApiError) {
-      return textResult(
-        `RTZR API error (HTTP ${err.httpStatus}${err.code ? `, ${err.code}` : ""}): ${err.apiMsg ?? err.message}`,
-        true,
-      );
-    }
-    if (err instanceof RtzrTimeoutError) {
-      return textResult(err.message, true);
-    }
+    // RtzrApiError.message already carries context + HTTP status + the API's
+    // own code/msg (see core/errors.ts errorFromResponse), so no per-class
+    // re-formatting here — same for RtzrTimeoutError.
     return textResult(err instanceof Error ? err.message : String(err), true);
   }
 }

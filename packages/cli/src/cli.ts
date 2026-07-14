@@ -4,8 +4,8 @@ import { basename, extname } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Command, Option } from "commander";
 import { glob, isDynamicPattern } from "tinyglobby";
-import { RtzrApiError, RtzrClient, RtzrTimeoutError, toJson } from "@spencer0124/rtzr-core";
-import { toTranscribeConfig, type CliFlags } from "./config-mapping.js";
+import { formatConfigError, RtzrClient, toJson } from "@spencer0124/rtzr-core";
+import { CLI_FIELD_LABELS, toTranscribeConfig, type CliFlags } from "./config-mapping.js";
 import { configFilePath, loadCredentials, saveCredentials } from "./config.js";
 import { resolveFormats, writeOutputs } from "./output.js";
 
@@ -113,15 +113,10 @@ program
         }
       } catch (err) {
         hadFailure = true;
-        if (err instanceof RtzrApiError) {
-          console.error(
-            `[rtzr] ${filename}: RTZR API error (HTTP ${err.httpStatus}${err.code ? `, ${err.code}` : ""}): ${err.apiMsg ?? err.message}`,
-          );
-        } else if (err instanceof RtzrTimeoutError) {
-          console.error(`[rtzr] ${filename}: ${err.message}`);
-        } else {
-          console.error(`[rtzr] ${filename}: ${err instanceof Error ? err.message : err}`);
-        }
+        // RtzrApiError.message already carries context + HTTP status + the
+        // API's own code/msg (see core/errors.ts errorFromResponse), so no
+        // per-class re-formatting here — same for RtzrTimeoutError.
+        console.error(`[rtzr] ${filename}: ${err instanceof Error ? err.message : err}`);
       }
     }
 
@@ -144,6 +139,15 @@ program
   });
 
 program.parseAsync(process.argv).catch((err: unknown) => {
-  console.error(err instanceof Error ? err.message : err);
+  // Config validation errors would otherwise print as ZodError's raw JSON
+  // issue dump — render them as one line in flag vocabulary instead. The
+  // "error: " prefix matches what commander uses for its own errors
+  // (e.g. unknown options), so all CLI failures read consistently.
+  const configError = formatConfigError(err, CLI_FIELD_LABELS);
+  if (configError) {
+    console.error(`error: ${configError}`);
+  } else {
+    console.error(err instanceof Error ? err.message : err);
+  }
   process.exitCode = 1;
 });

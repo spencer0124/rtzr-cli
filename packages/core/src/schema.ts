@@ -77,7 +77,7 @@ export const transcribeConfigSchema = baseTranscribeConfigSchema.superRefine((cf
   if (cfg.spkCount !== undefined && cfg.useDiarization !== true) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "spkCount requires useDiarization to be true",
+      message: "spkCount requires useDiarization",
       path: ["spkCount"],
     });
   }

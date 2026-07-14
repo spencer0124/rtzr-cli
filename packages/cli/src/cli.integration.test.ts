@@ -38,19 +38,25 @@ describe("cli surfacing of core schema errors", () => {
   // network I/O. Assertions match field tokens only (not full message text),
   // so the planned error-formatting pass won't break them.
 
-  it("rejects --speakers without --diarize: exit code 1, error names spkCount (schema rule #4)", { timeout: 15_000 }, async () => {
+  it("rejects --speakers without --diarize: exit code 1, error speaks flag vocabulary (schema rule #4)", { timeout: 15_000 }, async () => {
     const { exitCode, output } = await runCli([MISSING_AUDIO, "--speakers", "2"]);
 
     expect(exitCode).toBe(1);
-    expect(output).toMatch(/spkCount/);
+    // flag names, not core internals — the user typed --speakers, not spkCount
+    expect(output).toMatch(/--speakers/);
+    expect(output).toMatch(/--diarize/);
+    expect(output).not.toMatch(/spkCount|useDiarization/);
+    // one human-readable line, not ZodError's raw JSON issue dump
+    expect(output).not.toMatch(/"code":|"path":/);
     expect(output).not.toMatch(/ENOENT/); // died at validation, never reached file I/O
   });
 
-  it("rejects --language-candidates on the default (sommers) model: exit code 1, error names languageCandidates (schema rule #3)", { timeout: 15_000 }, async () => {
+  it("rejects --language-candidates on the default (sommers) model: exit code 1, error names the flag (schema rule #3)", { timeout: 15_000 }, async () => {
     const { exitCode, output } = await runCli([MISSING_AUDIO, "--language-candidates", "ko", "en"]);
 
     expect(exitCode).toBe(1);
-    expect(output).toMatch(/languageCandidates/);
+    expect(output).toMatch(/--language-candidates/);
+    expect(output).not.toMatch(/"code":|"path":/);
     expect(output).not.toMatch(/ENOENT/);
   });
 
@@ -66,6 +72,6 @@ describe("cli surfacing of core schema errors", () => {
 
     expect(exitCode).toBe(1);
     expect(output).toMatch(/ENOENT/);
-    expect(output).not.toMatch(/spkCount|languageCandidates.*supported/);
+    expect(output).not.toMatch(/--speakers|only supported/);
   });
 });

@@ -1,6 +1,6 @@
 import { baseTranscribeConfigSchema } from "@spencer0124/rtzr-core";
 import { describe, expect, it } from "vitest";
-import { toTranscribeConfig, type CliFlags } from "./config-mapping.js";
+import { CLI_FIELD_LABELS, toTranscribeConfig, type CliFlags } from "./config-mapping.js";
 
 describe("toTranscribeConfig", () => {
   it("maps the basic flags", () => {
@@ -114,6 +114,15 @@ describe("toTranscribeConfig", () => {
     for (const field of Object.keys(baseTranscribeConfigSchema.shape)) {
       expect(cfg, `expected TranscribeConfig.${field} to be set by some CLI flag`).toHaveProperty(field);
       expect(cfg[field], `CLI flags produced an undefined ${field} — is a flag missing?`).not.toBeUndefined();
+    }
+  });
+
+  // Same drift guard as above, for the error-label map: a core field without a
+  // label would make validation errors leak the core-internal name (e.g.
+  // "spkCount") instead of the flag the user typed ("--speakers").
+  it("CLI_FIELD_LABELS labels every field in core's baseTranscribeConfigSchema", () => {
+    for (const field of Object.keys(baseTranscribeConfigSchema.shape)) {
+      expect(CLI_FIELD_LABELS[field], `no CLI flag label for core field ${field}`).toMatch(/^--/);
     }
   });
 });

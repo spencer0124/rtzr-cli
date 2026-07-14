@@ -13,6 +13,7 @@ export type { RtzrClientOptions, PollOptions } from "./client.js";
 
 export { buildRequestConfig, parseTranscript } from "./mapping.js";
 
-export { RtzrApiError, RtzrTimeoutError, errorFromResponse } from "./errors.js";
+export { RtzrApiError, RtzrTimeoutError, errorFromResponse, formatConfigError } from "./errors.js";
+export type { ConfigFieldLabels } from "./errors.js";
 
 export { toJson, toSrt, toTxt, toVtt } from "./formatters.js";
