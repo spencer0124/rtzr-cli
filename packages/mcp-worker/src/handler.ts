@@ -34,10 +34,32 @@ export interface TranscribeToolInput {
   format?: OutputFormat;
 }
 
-/** BYO-key credentials read from the request's X-RTZR-CLIENT-ID / X-RTZR-CLIENT-SECRET headers. */
+/** BYO-key credentials, resolved from the request headers (or the demo fallback — see resolveCredentials). */
 export interface RtzrHeaderCredentials {
   clientId: string | null;
   clientSecret: string | null;
+}
+
+/** Worker secrets holding the demo fallback key (set via `wrangler secret put`, never committed). */
+export interface RtzrDemoEnv {
+  RTZR_CLIENT_ID?: string;
+  RTZR_CLIENT_SECRET?: string;
+}
+
+/**
+ * BYO-key headers take priority; a demo fallback key (Worker secret, `wrangler
+ * secret put` — never a repo file) is used for whichever field a caller didn't
+ * supply, so anonymous callers get a zero-setup trial instead of an auth error.
+ * They share the demo key's RTZR quota with everyone else who omits headers —
+ * bring your own key for real use. clientId/clientSecret resolve independently
+ * so a header for one doesn't accidentally suppress the env fallback for the
+ * other.
+ */
+export function resolveCredentials(headers: Headers, env: RtzrDemoEnv): RtzrHeaderCredentials {
+  return {
+    clientId: headers.get("X-RTZR-CLIENT-ID") ?? env.RTZR_CLIENT_ID ?? null,
+    clientSecret: headers.get("X-RTZR-CLIENT-SECRET") ?? env.RTZR_CLIENT_SECRET ?? null,
+  };
 }
 
 export interface McpToolResult {

@@ -2,22 +2,26 @@ import { createMcpHandler } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { baseTranscribeConfigSchema } from "@spencer0124/rtzr-core";
 import { z } from "zod";
-import { handleTranscribe, type RtzrHeaderCredentials } from "./handler.js";
+import { handleTranscribe, resolveCredentials, type RtzrDemoEnv, type RtzrHeaderCredentials } from "./handler.js";
 
 /**
  * Thin Worker/MCP wiring — intentionally NOT unit tested, same as
  * packages/cli/src/cli.ts. All real logic (input resolution, calling core,
- * formatting, error handling) lives in handler.ts, which IS tested with a
- * mocked fetchImpl. This file is verified with `wrangler dev` + the MCP
- * Inspector / `claude mcp add` instead — see docs/concept.md §8.2.
+ * formatting, error handling, credential resolution) lives in handler.ts,
+ * which IS tested with a mocked fetchImpl/env. This file is verified with
+ * `wrangler dev` + the MCP Inspector / `claude mcp add` instead — see
+ * docs/concept.md §8.2.
  *
  * Stateless by design (createMcpHandler, no McpAgent/Durable Objects): the
  * `transcribe` tool is one self-contained call per request, so there's no
  * cross-request session state worth paying Durable Object complexity for.
  *
- * BYO-key: credentials come from the X-RTZR-CLIENT-ID / X-RTZR-CLIENT-SECRET
- * request headers and are only ever held in memory for the one request that
- * carried them — this Worker never stores an RTZR key.
+ * BYO-key first, demo key fallback: credentials come from the X-RTZR-CLIENT-ID
+ * / X-RTZR-CLIENT-SECRET request headers when present. If a caller omits them,
+ * `resolveCredentials` falls back to RTZR_CLIENT_ID/RTZR_CLIENT_SECRET Worker
+ * secrets (set via `wrangler secret put` — never a repo file) so anonymous
+ * callers get a zero-setup demo instead of an auth error. Either way,
+ * credentials only ever live in memory for the one request that used them.
  */
 
 function createServer(creds: RtzrHeaderCredentials): McpServer {
@@ -58,11 +62,8 @@ function createServer(creds: RtzrHeaderCredentials): McpServer {
 }
 
 export default {
-  fetch: async (request: Request, env: unknown, ctx: ExecutionContext) => {
-    const creds: RtzrHeaderCredentials = {
-      clientId: request.headers.get("X-RTZR-CLIENT-ID"),
-      clientSecret: request.headers.get("X-RTZR-CLIENT-SECRET"),
-    };
+  fetch: async (request: Request, env: RtzrDemoEnv, ctx: ExecutionContext) => {
+    const creds: RtzrHeaderCredentials = resolveCredentials(request.headers, env);
     // A fresh McpServer per request — the MCP SDK doesn't allow reconnecting
     // an already-connected server to a new transport (see createMcpHandler's
     // own docs), and each request may carry different BYO-key credentials.

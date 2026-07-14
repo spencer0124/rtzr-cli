@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleTranscribe, resolveAudioInput } from "./handler.js";
+import { handleTranscribe, resolveAudioInput, resolveCredentials } from "./handler.js";
 
 const CREDS = { clientId: "id-1", clientSecret: "secret-1" };
 
@@ -77,6 +77,38 @@ describe("resolveAudioInput", () => {
   it("uses an explicit filename for base64 input", async () => {
     const { filename } = await resolveAudioInput("aGk=", "clip.wav");
     expect(filename).toBe("clip.wav");
+  });
+});
+
+describe("resolveCredentials", () => {
+  it("prefers BYO-key headers over the demo fallback env secret", () => {
+    const headers = new Headers({ "X-RTZR-CLIENT-ID": "header-id", "X-RTZR-CLIENT-SECRET": "header-secret" });
+
+    const creds = resolveCredentials(headers, { RTZR_CLIENT_ID: "env-id", RTZR_CLIENT_SECRET: "env-secret" });
+
+    expect(creds).toEqual({ clientId: "header-id", clientSecret: "header-secret" });
+  });
+
+  it("falls back to the env demo secret when no BYO-key headers are sent", () => {
+    const headers = new Headers();
+
+    const creds = resolveCredentials(headers, { RTZR_CLIENT_ID: "env-id", RTZR_CLIENT_SECRET: "env-secret" });
+
+    expect(creds).toEqual({ clientId: "env-id", clientSecret: "env-secret" });
+  });
+
+  it("resolves clientId and clientSecret independently (no mixing a header value with the wrong env fallback)", () => {
+    const headers = new Headers({ "X-RTZR-CLIENT-ID": "header-id" }); // secret header omitted
+
+    const creds = resolveCredentials(headers, { RTZR_CLIENT_ID: "env-id", RTZR_CLIENT_SECRET: "env-secret" });
+
+    expect(creds).toEqual({ clientId: "header-id", clientSecret: "env-secret" });
+  });
+
+  it("returns nulls when neither headers nor env demo secrets are configured", () => {
+    const creds = resolveCredentials(new Headers(), {});
+
+    expect(creds).toEqual({ clientId: null, clientSecret: null });
   });
 });
 
