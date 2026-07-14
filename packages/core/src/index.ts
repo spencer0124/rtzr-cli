@@ -5,7 +5,7 @@ export type {
   Utterance,
 } from "./types.js";
 
-export { transcribeConfigSchema, rtzrCredentialsSchema } from "./schema.js";
+export { baseTranscribeConfigSchema, transcribeConfigSchema, rtzrCredentialsSchema } from "./schema.js";
 export type { TranscribeConfigInput } from "./schema.js";
 
 export { RtzrClient, transcribe } from "./client.js";

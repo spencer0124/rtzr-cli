@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rtzr-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-14",
+  "compatibility_flags": ["nodejs_compat"],
+  // Stateless MCP server (createMcpHandler, no McpAgent/Durable Objects) — see
+  // CLAUDE.md's mcp-worker section and docs/concept.md §8.2 for why.
+  //
+  // Live at both https://rtzr-mcp.zoyoong124.workers.dev/mcp (default) and
+  // https://rtzr.seungyongcho.com/mcp (custom domain, attached 2026-07-14 via
+  // the Cloudflare dashboard). Declared here too so a clean `wrangler deploy`
+  // reproduces the same routing instead of only living in the dashboard.
+  "routes": [{ "pattern": "rtzr.seungyongcho.com/*", "custom_domain": true }]
+}

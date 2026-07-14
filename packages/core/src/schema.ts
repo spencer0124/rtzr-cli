@@ -3,12 +3,18 @@ import { z } from "zod";
 /**
  * Single source of truth for `TranscribeConfig` validation.
  *
- * The CLI derives its flag validation from this schema, and the (roadmap)
- * MCP tool derives its input schema from the same object — so a new option
- * added here is automatically enforced in both surfaces without redefining
- * it twice. See docs/concept.md §5.
+ * The CLI derives its flag validation from this schema, and `packages/mcp-worker`
+ * derives its `transcribe` tool's inputSchema from the same object — so a new
+ * option added here is automatically enforced in both surfaces without
+ * redefining it twice. See docs/concept.md §5.
+ *
+ * Exported as the *unrefined* object (not `transcribeConfigSchema` below) because
+ * MCP's `server.registerTool()` needs a plain `ZodObject`/shape, not a `ZodEffects` —
+ * `.superRefine()` strips `.shape`. The whisper+language cross-field rule below
+ * still applies to CLI input via `transcribeConfigSchema`; the MCP worker re-runs
+ * that same refined schema by hand inside its handler (see mcp-worker/src/handler.ts).
  */
-const baseTranscribeConfigSchema = z.object({
+export const baseTranscribeConfigSchema = z.object({
   modelName: z.enum(["sommers", "whisper"]).optional(),
   language: z.enum(["ko", "ja", "en", "detect", "multi"]).optional(),
   languageCandidates: z.array(z.string()).optional(),
