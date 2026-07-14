@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { RtzrClient } from "./client.js";
-import { RtzrApiError, RtzrTimeoutError } from "./errors.js";
+import { RtzrClient, transcribe } from "./client.js";
+import { RtzrApiError, RtzrTimeoutError, errorFromResponse } from "./errors.js";
 
 const CREDS = { clientId: "id-1", clientSecret: "secret-1" };
 
@@ -112,6 +112,23 @@ describe("RtzrClient.submit", () => {
       client.submit(new Uint8Array([1]), "big.wav", {}),
     ).rejects.toMatchObject({ httpStatus: 413, code: "H0005" });
   });
+
+  it("accepts a Blob directly instead of wrapping it (audio instanceof Blob branch)", async () => {
+    const farFutureExpiry = Math.floor(Date.now() / 1000) + 3600;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(authOk(farFutureExpiry))
+      .mockResolvedValueOnce(jsonResponse(200, { id: "job-2" }));
+    const client = new RtzrClient(CREDS, { fetchImpl, sleepImpl: noopSleep });
+
+    const id = await client.submit(new Blob(["fake audio bytes"]), "sample.wav", {});
+
+    expect(id).toBe("job-2");
+    const fd = fetchImpl.mock.calls[1][1].body as FormData;
+    const file = fd.get("file") as File;
+    expect(file.name).toBe("sample.wav");
+    expect(await file.text()).toBe("fake audio bytes");
+  });
 });
 
 describe("RtzrClient.poll", () => {
@@ -180,5 +197,114 @@ describe("RtzrClient.poll", () => {
       httpStatus: 404,
       code: "H0004",
     });
+  });
+});
+
+describe("RtzrClient.transcribe", () => {
+  it("submits then polls to a completed result, reusing the cached token across both calls", async () => {
+    const farFutureExpiry = Math.floor(Date.now() / 1000) + 3600;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(authOk(farFutureExpiry)) // authenticate, triggered by submit
+      .mockResolvedValueOnce(jsonResponse(200, { id: "job-9" })) // submit
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          id: "job-9",
+          status: "completed",
+          results: { utterances: [{ start_at: 0, duration: 10, msg: "hi" }] },
+        }),
+      ); // poll
+    const client = new RtzrClient(CREDS, { fetchImpl, sleepImpl: noopSleep });
+
+    const result = await client.transcribe(new Uint8Array([1]), "sample.wav", {});
+
+    expect(result.utterances).toEqual([
+      { startAt: 0, duration: 10, msg: "hi", spk: undefined, spkType: undefined, lang: undefined },
+    ]);
+    // exactly 3 calls (auth + submit + poll) — if poll had re-authenticated
+    // instead of reusing the token cached during submit, this would be 4.
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("RtzrClient baseUrl handling", () => {
+  it("strips a trailing slash from a custom baseUrl before building request URLs", async () => {
+    const farFutureExpiry = Math.floor(Date.now() / 1000) + 3600;
+    const fetchImpl = vi.fn().mockResolvedValue(authOk(farFutureExpiry));
+    const client = new RtzrClient(CREDS, {
+      baseUrl: "https://custom.example.com/",
+      fetchImpl,
+      sleepImpl: noopSleep,
+    });
+
+    await client.authenticate();
+
+    const [url] = fetchImpl.mock.calls[0];
+    // a naive string concat would produce a double slash: ".../v1/authenticate" not ".../..//v1/authenticate"
+    expect(url).toBe("https://custom.example.com/v1/authenticate");
+  });
+});
+
+describe("transcribe (standalone function)", () => {
+  it("builds a fresh client from the given credentials/baseUrl and forwards the remaining config", async () => {
+    const farFutureExpiry = Math.floor(Date.now() / 1000) + 3600;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(authOk(farFutureExpiry))
+      .mockResolvedValueOnce(jsonResponse(200, { id: "job-5" }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { id: "job-5", status: "completed", results: { utterances: [] } }),
+      );
+    // the standalone function has no fetchImpl injection point (it always
+    // constructs its own RtzrClient), so global fetch has to be stubbed here.
+    vi.stubGlobal("fetch", fetchImpl);
+
+    try {
+      const result = await transcribe(new Uint8Array([1]), "sample.wav", {
+        clientId: "id-1",
+        clientSecret: "secret-1",
+        baseUrl: "https://custom.example.com",
+        useDiarization: true,
+        spkCount: 2,
+      });
+
+      expect(result.utterances).toEqual([]);
+      for (const [url] of fetchImpl.mock.calls) {
+        expect(url as string).toMatch(/^https:\/\/custom\.example\.com\/v1\//);
+      }
+      // clientId/clientSecret/baseUrl must NOT leak into the transcribe config
+      // body — only the remaining TranscribeConfig fields should reach it.
+      const submitInit = fetchImpl.mock.calls[1][1] as RequestInit;
+      const config = JSON.parse((submitInit.body as FormData).get("config") as string);
+      expect(config).toEqual({ use_diarization: true, diarization: { spk_count: 2 } });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("errorFromResponse", () => {
+  it("falls back to statusText when the error response body isn't JSON", async () => {
+    const response = new Response("<html>Bad Gateway</html>", { status: 502, statusText: "Bad Gateway" });
+
+    const error = await errorFromResponse(response, "poll");
+
+    expect(error).toBeInstanceOf(RtzrApiError);
+    expect(error.httpStatus).toBe(502);
+    expect(error.code).toBeUndefined();
+    expect(error.apiMsg).toBeUndefined();
+    expect(error.message).toBe("poll failed with HTTP 502 (Bad Gateway)");
+  });
+
+  it("falls back to statusText when the body has a code but no msg", async () => {
+    const response = jsonResponse(500, { code: "E999" }, "Internal Server Error");
+
+    const error = await errorFromResponse(response, "submit");
+
+    expect(error.code).toBe("E999");
+    expect(error.apiMsg).toBeUndefined();
+    // detail composition only kicks in when apiMsg is present — code alone
+    // isn't enough, so this must read statusText, not "E999: undefined".
+    expect(error.message).toBe("submit failed with HTTP 500 (Internal Server Error)");
   });
 });

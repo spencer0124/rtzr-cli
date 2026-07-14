@@ -74,3 +74,38 @@ describe("toJson", () => {
     expect(toJson(sample)).toBe(JSON.stringify(sample.raw, null, 2));
   });
 });
+
+describe("empty utterances", () => {
+  const empty: TranscriptResult = { utterances: [], raw: { id: "job-empty", status: "completed" } };
+
+  it("toTxt/toSrt return an empty string rather than throwing", () => {
+    expect(toTxt(empty)).toBe("");
+    expect(toSrt(empty)).toBe("");
+  });
+
+  it("toVtt still emits the WEBVTT header with no cues", () => {
+    expect(toVtt(empty)).toBe("WEBVTT\n\n");
+  });
+});
+
+describe("toSrtTimecode clamping (via toSrt)", () => {
+  it("clamps a negative startAt to 00:00:00,000 instead of going negative", () => {
+    // end (startAt + duration = 100) is independently clamped too, so pick a
+    // duration long enough that only the *start* timecode needs clamping —
+    // otherwise both sides collapse to 0 and the clamp on start goes unproven.
+    const negative: TranscriptResult = {
+      utterances: [{ startAt: -500, duration: 600, msg: "clock skew" }],
+      raw: {},
+    };
+    expect(toSrt(negative)).toContain("00:00:00,000 --> 00:00:00,100");
+  });
+
+  it("rounds a fractional millisecond value", () => {
+    const fractional: TranscriptResult = {
+      utterances: [{ startAt: 1500.6, duration: 100, msg: "rounding" }],
+      raw: {},
+    };
+    // 1500.6 rounds to 1501ms
+    expect(toSrt(fractional)).toContain("00:00:01,501");
+  });
+});

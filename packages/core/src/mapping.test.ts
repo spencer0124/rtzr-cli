@@ -23,6 +23,11 @@ describe("buildRequestConfig", () => {
     });
   });
 
+  it("maps languageCandidates to language_candidates", () => {
+    const out = buildRequestConfig({ languageCandidates: ["ko", "en"] });
+    expect(out).toEqual({ language_candidates: ["ko", "en"] });
+  });
+
   it("nests spk_count under diarization when useDiarization is true", () => {
     const out = buildRequestConfig({ useDiarization: true, spkCount: 3 });
     expect(out).toEqual({
