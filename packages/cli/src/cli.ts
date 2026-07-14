@@ -37,7 +37,7 @@ program
   .description(
     "Whisper-style CLI for the RTZR (Return Zero) STT API — speaker diarization, keyword boosting, ITN.",
   )
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .argument("<audio...>", "audio file path(s) or glob(s)")

@@ -82,6 +82,8 @@ function createServer(creds: RtzrHeaderCredentials, host: string, uploads: R2Buc
   server.registerTool(
     "transcribe",
     {
+      title: "Transcribe audio (RTZR STT)",
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
       description:
         "Transcribes audio via the RTZR (Return Zero) STT API. Supports speaker diarization, keyword " +
         "boosting, ITN, and per-word timestamps. `input` must be an http(s) URL or a base64-encoded audio " +
@@ -97,14 +99,18 @@ function createServer(creds: RtzrHeaderCredentials, host: string, uploads: R2Buc
           .optional()
           .describe("filename hint for codec detection — required for base64 input unless the default (mp3) is correct"),
         model: model.describe("whisper requires `language` to also be set (default sommers)"),
-        language,
+        language: language.describe("transcription language — detect (auto-detect) and multi (multilingual) require model: whisper"),
         languageCandidates: languageCandidates.describe(
           "language detection candidates — only with model: whisper (default: ko/ja/zh/en)",
         ),
         diarize: z.boolean().optional().describe("enable speaker diarization (default false)"),
         speakers: speakers.describe("expected speaker count, 0 = auto — requires diarize: true"),
-        keywords,
-        itn: z.boolean().optional().describe("inverse text normalization, e.g. 이십삼 -> 23 (default true)"),
+        keywords: keywords.describe(
+          "keywords to boost recognition of — plain strings, no score/weight syntax exists. Only effective " +
+            "for Korean transcription. With model sommers spell them phonetically in Korean (e.g. 제이펙 for " +
+            "JPEG); whisper also accepts English acronyms and digits",
+        ),
+        itn: z.boolean().optional().describe("inverse text normalization, e.g. 이십삼 -> 23 — only effective with model sommers + Korean (default true)"),
         disfluencyFilter: z.boolean().optional().describe("filter filler words / disfluencies (default true)"),
         profanityFilter: z.boolean().optional().describe("filter profanity (default false)"),
         paragraphSplitter: z.boolean().optional().describe("split output into paragraphs (default true)"),
@@ -144,6 +150,8 @@ function createServer(creds: RtzrHeaderCredentials, host: string, uploads: R2Buc
   server.registerTool(
     "request_upload_url",
     {
+      title: "Request presigned upload URL",
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
       description:
         "For audio too large to inline as base64 in transcribe (over ~3MB, more than a few seconds): " +
         "returns a one-time presigned URL. If you have code execution / shell access and the file is " +
