@@ -62,11 +62,22 @@ function createServer(creds: RtzrHeaderCredentials, host: string, uploads: R2Buc
   // profanityFilter/paragraphSplitter/wordTimestamps/languageCandidates
   // entirely, which is exactly the gap a real client hit trying to request
   // word timestamps (LESSONS.md).
-  const { language, languageCandidates, keywords } = baseTranscribeConfigSchema.pick({
-    language: true,
-    languageCandidates: true,
-    keywords: true,
-  }).shape;
+  // Everything with an actual value constraint (enums, ranges) is reused from
+  // core so the constraint lives in exactly one place — hand-declaring e.g.
+  // `speakers: z.number().int().min(0)` here would silently diverge from
+  // core's spkCount bound. Plain booleans and tool-only fields (input/
+  // filename/format) carry no constraint, so reuse would add indirection for
+  // nothing.
+  const { language, languageCandidates, keywords, paragraphSplitterMax, domain } =
+    baseTranscribeConfigSchema.pick({
+      language: true,
+      languageCandidates: true,
+      keywords: true,
+      paragraphSplitterMax: true,
+      domain: true,
+    }).shape;
+  // These two are renamed on the tool surface, so they can't be `.pick()`ed.
+  const { modelName: model, spkCount: speakers } = baseTranscribeConfigSchema.shape;
 
   server.registerTool(
     "transcribe",
@@ -85,29 +96,26 @@ function createServer(creds: RtzrHeaderCredentials, host: string, uploads: R2Buc
           .string()
           .optional()
           .describe("filename hint for codec detection — required for base64 input unless the default (mp3) is correct"),
-        model: z.enum(["sommers", "whisper"]).optional().describe("whisper requires `language` to also be set (default sommers)"),
+        model: model.describe("whisper requires `language` to also be set (default sommers)"),
         language,
         languageCandidates: languageCandidates.describe(
           "language detection candidates — only with model: whisper (default: ko/ja/zh/en)",
         ),
         diarize: z.boolean().optional().describe("enable speaker diarization (default false)"),
-        speakers: z.number().int().min(0).optional().describe("expected speaker count, 0 = auto — requires diarize: true"),
+        speakers: speakers.describe("expected speaker count, 0 = auto — requires diarize: true"),
         keywords,
         itn: z.boolean().optional().describe("inverse text normalization, e.g. 이십삼 -> 23 (default true)"),
         disfluencyFilter: z.boolean().optional().describe("filter filler words / disfluencies (default true)"),
         profanityFilter: z.boolean().optional().describe("filter profanity (default false)"),
         paragraphSplitter: z.boolean().optional().describe("split output into paragraphs (default true)"),
-        paragraphSplitterMax: z
-          .number()
-          .int()
-          .min(1)
-          .optional()
-          .describe("max characters per paragraph, only with paragraphSplitter on (default 50)"),
+        paragraphSplitterMax: paragraphSplitterMax.describe(
+          "max characters per paragraph, only with paragraphSplitter on (default 50)",
+        ),
         wordTimestamps: z
           .boolean()
           .optional()
           .describe("adds a words[] array (start/duration/text per word) to each utterance — only visible with format: \"json\" (default false)"),
-        domain: z.enum(["GENERAL", "CALL"]).optional().describe("audio domain hint (default GENERAL)"),
+        domain: domain.describe("audio domain hint (default GENERAL)"),
         format: z.enum(["txt", "srt", "vtt", "json"]).optional().describe("output format (default txt) — use json to see wordTimestamps"),
       },
     },
