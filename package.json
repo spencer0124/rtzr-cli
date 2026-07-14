@@ -1,6 +1,7 @@
 {
   "name": "rtzr-cli-monorepo",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@11.13.0",
   "engines": {
     "node": ">=18"

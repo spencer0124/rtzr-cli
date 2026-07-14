@@ -2,6 +2,7 @@
   "name": "@spencer0124/rtzr-core",
   "version": "0.2.0",
   "description": "Environment-neutral core library for the RTZR (Return Zero) STT API — auth, submit, poll, parse, formatters.",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
