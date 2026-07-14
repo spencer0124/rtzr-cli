@@ -1,5 +1,6 @@
+import { baseTranscribeConfigSchema } from "@spencer0124/rtzr-core";
 import { describe, expect, it, vi } from "vitest";
-import { handleTranscribe, resolveAudioInput, resolveCredentials } from "./handler.js";
+import { buildTranscribeConfig, handleTranscribe, resolveAudioInput, resolveCredentials } from "./handler.js";
 
 const CREDS = { clientId: "id-1", clientSecret: "secret-1" };
 
@@ -127,6 +128,70 @@ describe("resolveCredentials", () => {
   });
 });
 
+describe("buildTranscribeConfig", () => {
+  it("defaults language to ko when model isn't whisper", () => {
+    const cfg = buildTranscribeConfig({ input: "aGk=" });
+    expect(cfg.language).toBe("ko");
+  });
+
+  it("leaves language undefined for whisper with no language given (lets the schema's cross-field check catch it)", () => {
+    const cfg = buildTranscribeConfig({ input: "aGk=", model: "whisper" });
+    expect(cfg.language).toBeUndefined();
+  });
+
+  it("maps languageCandidates/itn/disfluencyFilter/profanityFilter/paragraphSplitter/paragraphSplitterMax/wordTimestamps", () => {
+    const cfg = buildTranscribeConfig({
+      input: "aGk=",
+      languageCandidates: ["ko", "en"],
+      itn: false,
+      disfluencyFilter: false,
+      profanityFilter: true,
+      paragraphSplitter: false,
+      paragraphSplitterMax: 80,
+      wordTimestamps: true,
+    });
+
+    expect(cfg.languageCandidates).toEqual(["ko", "en"]);
+    expect(cfg.useItn).toBe(false);
+    expect(cfg.useDisfluencyFilter).toBe(false);
+    expect(cfg.useProfanityFilter).toBe(true);
+    expect(cfg.useParagraphSplitter).toBe(false);
+    expect(cfg.paragraphSplitterMax).toBe(80);
+    expect(cfg.useWordTimestamp).toBe(true);
+  });
+
+  // Regression test for the exact gap that motivated this: core's
+  // baseTranscribeConfigSchema grew fields (languageCandidates, itn,
+  // disfluencyFilter, profanityFilter, paragraphSplitter/Max, wordTimestamps)
+  // that this tool's inputSchema didn't expose — a real client hit this
+  // trying to request word timestamps. Filling every tool input field and
+  // checking the built config covers every schema field catches that class
+  // of drift instead of relying on someone remembering to update both places.
+  it("covers every field in core's baseTranscribeConfigSchema (no silently-dropped options)", () => {
+    const cfg = buildTranscribeConfig({
+      input: "aGk=",
+      model: "whisper",
+      language: "en",
+      languageCandidates: ["ko", "en"],
+      diarize: true,
+      speakers: 2,
+      keywords: ["word"],
+      itn: true,
+      disfluencyFilter: true,
+      profanityFilter: true,
+      paragraphSplitter: true,
+      paragraphSplitterMax: 50,
+      wordTimestamps: true,
+      domain: "GENERAL",
+    }) as Record<string, unknown>;
+
+    for (const field of Object.keys(baseTranscribeConfigSchema.shape)) {
+      expect(cfg, `expected the built config to set ${field}`).toHaveProperty(field);
+      expect(cfg[field], `built config had an undefined ${field} — is a tool input field missing?`).not.toBeUndefined();
+    }
+  });
+});
+
 describe("handleTranscribe", () => {
   it("rejects when RTZR credentials are missing from the request headers", async () => {
     const result = await handleTranscribe({ input: "aGk=" }, { clientId: null, clientSecret: null });
@@ -218,6 +283,34 @@ describe("handleTranscribe", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/language/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  // The two rejections below are core schema rules #3/#4 (verified API 400s,
+  // docs/rtzr-config-constraints.md §3-A) — the rules themselves are covered
+  // by core's schema.test.ts; these only check they surface as tool errors
+  // before any API call.
+  it("rejects speakers without diarize before ever calling the RTZR API", async () => {
+    const fetchImpl = vi.fn();
+
+    const result = await handleTranscribe({ input: "aGk=", speakers: 2 }, CREDS, { fetchImpl });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/useDiarization/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects languageCandidates on a non-whisper model before ever calling the RTZR API", async () => {
+    const fetchImpl = vi.fn();
+
+    const result = await handleTranscribe(
+      { input: "aGk=", model: "sommers", languageCandidates: ["ko", "en"] },
+      CREDS,
+      { fetchImpl },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/languageCandidates/);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 

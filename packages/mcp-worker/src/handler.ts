@@ -28,9 +28,24 @@ export interface TranscribeToolInput {
   filename?: string;
   model?: TranscribeConfig["modelName"];
   language?: TranscribeConfig["language"];
+  /** Whisper-only (see core schema rule #3; API default: ["ko","ja","zh","en"]). */
+  languageCandidates?: string[];
   diarize?: boolean;
   speakers?: number;
   keywords?: string[];
+  /** Inverse text normalization, e.g. "이십삼" -> "23". API default: true. */
+  itn?: boolean;
+  /** Filters disfluencies (um, uh, filler words). API default: true. */
+  disfluencyFilter?: boolean;
+  /** API default: false. */
+  profanityFilter?: boolean;
+  /** API default: true. */
+  paragraphSplitter?: boolean;
+  /** Max characters per paragraph, only applies when paragraphSplitter is true. API default: 50. */
+  paragraphSplitterMax?: number;
+  /** Adds a `words` array (per-word start/duration/text) to each utterance. API default: false. */
+  wordTimestamps?: boolean;
+  domain?: TranscribeConfig["domain"];
   format?: OutputFormat;
 }
 
@@ -181,6 +196,40 @@ export interface HandleTranscribeOptions {
   preResolvedAudio?: { bytes: Uint8Array; filename: string };
 }
 
+/**
+ * Maps the tool's flat input -> the shared `TranscribeConfig` (validated by
+ * core's zod schema in handleTranscribe below). Pulled out as its own
+ * function so it's testable independently and so a schema-coverage test can
+ * assert it maps every field core's baseTranscribeConfigSchema knows about —
+ * see the regression test in handler.test.ts for why: this tool's inputSchema
+ * previously omitted itn/disfluencyFilter/profanityFilter/paragraphSplitter/
+ * wordTimestamps/languageCandidates entirely, which is exactly the gap a
+ * real client hit trying to request word timestamps (LESSONS.md).
+ */
+export function buildTranscribeConfig(toolInput: TranscribeToolInput): TranscribeConfig {
+  // Mirror the CLI's `-l/--language` default of "ko" (docs/concept.md §8.1) — except
+  // when modelName is "whisper" and no language was given: silently defaulting there
+  // would hide the fact that whisper requires an explicit language, so we leave it
+  // undefined and let transcribeConfigSchema's cross-field rule catch it below.
+  const language = toolInput.language ?? (toolInput.model === "whisper" ? undefined : "ko");
+
+  return {
+    modelName: toolInput.model,
+    language,
+    languageCandidates: toolInput.languageCandidates,
+    useDiarization: toolInput.diarize ?? false,
+    spkCount: toolInput.speakers,
+    keywords: toolInput.keywords,
+    useItn: toolInput.itn,
+    useDisfluencyFilter: toolInput.disfluencyFilter,
+    useProfanityFilter: toolInput.profanityFilter,
+    useParagraphSplitter: toolInput.paragraphSplitter,
+    paragraphSplitterMax: toolInput.paragraphSplitterMax,
+    useWordTimestamp: toolInput.wordTimestamps,
+    domain: toolInput.domain,
+  };
+}
+
 /** Orchestrates one `transcribe` tool call: validate -> resolve audio -> call core -> format. */
 export async function handleTranscribe(
   toolInput: TranscribeToolInput,
@@ -194,19 +243,7 @@ export async function handleTranscribe(
     );
   }
 
-  // Mirror the CLI's `-l/--language` default of "ko" (docs/concept.md §8.1) — except
-  // when modelName is "whisper" and no language was given: silently defaulting there
-  // would hide the fact that whisper requires an explicit language, so we leave it
-  // undefined and let transcribeConfigSchema's cross-field rule catch it below.
-  const language = toolInput.language ?? (toolInput.model === "whisper" ? undefined : "ko");
-
-  const cfg: TranscribeConfig = {
-    modelName: toolInput.model,
-    language,
-    useDiarization: toolInput.diarize ?? false,
-    spkCount: toolInput.speakers,
-    keywords: toolInput.keywords,
-  };
+  const cfg = buildTranscribeConfig(toolInput);
 
   const validated = transcribeConfigSchema.safeParse(cfg);
   if (!validated.success) {

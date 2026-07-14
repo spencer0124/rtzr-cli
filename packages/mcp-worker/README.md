@@ -21,10 +21,24 @@ claude mcp add --transport http rtzr https://rtzr.seungyongcho.com/mcp \
 | `filename` | string | 자동 유추 | 코덱 판별용 파일명 힌트. URL은 경로/Content-Type에서 자동 추정, base64는 명시 권장 |
 | `model` | `sommers` \| `whisper` | `sommers` | `whisper`는 `language`도 함께 지정해야 함 |
 | `language` | `ko` \| `ja` \| `en` \| `detect` \| `multi` | `ko` | |
+| `languageCandidates` | string[] | `ko/ja/zh/en` | `model: whisper` 전용 |
 | `diarize` | boolean | `false` | 화자분리 |
-| `speakers` | number | `0`(자동) | 예상 화자 수 |
+| `speakers` | number | `0`(자동) | 예상 화자 수 — `diarize: true` 필요 |
 | `keywords` | string[] | — | 키워드 부스팅(단어당 20자 이하, 최대 500개) |
+| `itn` | boolean | `true` | 역정규화(예: "이십삼" → "23") |
+| `disfluencyFilter` | boolean | `true` | 간투어(어, 음 등) 필터 |
+| `profanityFilter` | boolean | `false` | 비속어 필터 |
+| `paragraphSplitter` | boolean | `true` | 문단 나누기 |
+| `paragraphSplitterMax` | number | `50` | 문단 최대 글자 수(`paragraphSplitter` on일 때만) |
+| `wordTimestamps` | boolean | `false` | 각 발화에 단어별 `words[]`(시작/길이/텍스트) 추가 — **`format: "json"`에서만 보임** |
+| `domain` | `GENERAL` \| `CALL` | `GENERAL` | 오디오 도메인 힌트 |
 | `format` | `txt` \| `srt` \| `vtt` \| `json` | `txt` | 출력 포맷 |
+
+> 위 기본값은 RTZR 공식 문서(`developers.rtzr.ai/docs/stt-file/`, 2026-07-14 확인)를 기준으로
+> 정확히 반영했습니다 — 특히 `paragraphSplitter`는 API 기본값이 `true`라 이 파라미터를 노출하기 전에도
+> 조용히 적용되고 있었습니다. `wordTimestamps`는 `words[]`를 응답에 추가하지만 `toTxt`/`toSrt`/`toVtt`는
+> 발화(utterance) 단위 그대로입니다 — 단어별 데이터를 보려면 `format: "json"`을 쓰세요(API가 실제로
+> 주는 데이터를 그대로 노출할 뿐, 별도의 단어 단위 자막 포맷을 새로 만들지 않았습니다).
 
 > **base64는 짧은 클립에만.** base64는 tool 호출 자체에 인라인되기 때문에 호출자(LLM)의 컨텍스트를
 > 그대로 거칩니다 — 디코드 후 3MB(대략 1분 내외의 압축 음성)를 넘으면 즉시 에러로 거부합니다. 더 긴

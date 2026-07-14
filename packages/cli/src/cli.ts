@@ -4,43 +4,10 @@ import { basename, extname } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Command, Option } from "commander";
 import { glob, isDynamicPattern } from "tinyglobby";
-import type { TranscribeConfig } from "@spencer0124/rtzr-core";
-import { RtzrApiError, RtzrClient, RtzrTimeoutError, toJson, transcribeConfigSchema } from "@spencer0124/rtzr-core";
+import { RtzrApiError, RtzrClient, RtzrTimeoutError, toJson } from "@spencer0124/rtzr-core";
+import { toTranscribeConfig, type CliFlags } from "./config-mapping.js";
 import { configFilePath, loadCredentials, saveCredentials } from "./config.js";
 import { resolveFormats, writeOutputs } from "./output.js";
-
-interface CliFlags {
-  outputFormat: string;
-  outputDir: string;
-  language: string;
-  model: string;
-  diarize?: boolean;
-  speakers?: string;
-  keywords?: string[];
-  itn: boolean;
-  profanityFilter?: boolean;
-  disfluencyFilter: boolean;
-  wordTimestamps?: boolean;
-  domain?: string;
-  json?: boolean;
-}
-
-/** Maps parsed CLI flags -> the shared `TranscribeConfig` (validated by core's zod schema). */
-function toTranscribeConfig(flags: CliFlags): TranscribeConfig {
-  const cfg: TranscribeConfig = {
-    modelName: flags.model as TranscribeConfig["modelName"],
-    language: flags.language as TranscribeConfig["language"],
-    useDiarization: flags.diarize,
-    spkCount: flags.speakers !== undefined ? Number(flags.speakers) : undefined,
-    keywords: flags.keywords,
-    useItn: flags.itn,
-    useDisfluencyFilter: flags.disfluencyFilter,
-    useProfanityFilter: flags.profanityFilter,
-    useWordTimestamp: flags.wordTimestamps,
-    domain: flags.domain as TranscribeConfig["domain"],
-  };
-  return transcribeConfigSchema.parse(cfg) as TranscribeConfig;
-}
 
 /** Expands glob patterns (e.g. "*.wav") via tinyglobby; passes literal paths through unchanged. */
 async function resolveAudioFiles(patterns: string[]): Promise<string[]> {
@@ -85,14 +52,18 @@ program
     new Option("--model <name>", "sommers|whisper").default("sommers"),
   )
   .option("--diarize", "enable speaker diarization (use_diarization)")
-  .option("--speakers <n>", "expected speaker count, 0 = auto (spk_count)")
+  .option("--speakers <n>", "expected speaker count, 0 = auto (spk_count) — requires --diarize")
   .option("--keywords <kw...>", "keyword boosting words (no per-word score syntax)")
+  .option("--language-candidates <langs...>", "language detection candidates — only with --model whisper (default: ko/ja/zh/en)")
   .option("--itn", "enable inverse text normalization (default: on)", true)
   .option("--no-itn", "disable inverse text normalization")
   .option("--profanity-filter", "enable profanity filter")
   .option("--disfluency-filter", "enable disfluency filter (default: on)", true)
   .option("--no-disfluency-filter", "disable disfluency filter")
-  .option("--word-timestamps", "include per-word timestamps")
+  .option("--paragraph-splitter", "split output into paragraphs (default: on)", true)
+  .option("--no-paragraph-splitter", "disable paragraph splitting")
+  .option("--paragraph-max <n>", "max characters per paragraph, only with paragraph splitting on (API default: 50)")
+  .option("--word-timestamps", "include per-word timestamps (only reflected in --json output — see README)")
   .addOption(new Option("--domain <domain>", "GENERAL|CALL"))
   .option("--json", "print the raw API response JSON to stdout instead of writing files")
   .action(async (audioPatterns: string[], flags: CliFlags) => {
