@@ -1,21 +1,19 @@
-# rtzr-cli
+# @spencer0124/rtzr-cli
 
-> Whisper처럼 쓰는 [RTZR (Return Zero)](https://developers.rtzr.ai/) STT CLI — 화자분리·키워드부스팅·ITN 지원.
-> 리턴제로의 공식 도구가 아닌, RTZR STT API를 활용한 비공식 CLI/라이브러리입니다.
+Whisper처럼 쓰는 [RTZR (Return Zero)](https://developers.rtzr.ai/) STT CLI — 화자분리·키워드부스팅·ITN 지원.
+리턴제로의 공식 도구가 아닌, RTZR STT API를 활용한 비공식 CLI/라이브러리입니다.
 
 ```bash
 npx @spencer0124/rtzr-cli audio.mp3 --diarize
 ```
 
-## 설치 / 인증
+## 인증
 
 ```bash
-npm install -g @spencer0124/rtzr-cli   # 또는 npx로 설치 없이 실행
-rtzr configure                          # RTZR_CLIENT_ID / RTZR_CLIENT_SECRET을 대화형으로 입력, 로컬에 저장
+rtzr configure   # RTZR_CLIENT_ID / RTZR_CLIENT_SECRET을 대화형으로 입력, 로컬에 저장
 ```
 
-환경변수 `RTZR_CLIENT_ID` / `RTZR_CLIENT_SECRET`이 있으면 로컬 설정보다 우선 사용됩니다. 키는 절대 커밋되지
-않고, 저장 위치는 사용자 홈의 설정 폴더입니다.
+환경변수 `RTZR_CLIENT_ID` / `RTZR_CLIENT_SECRET`이 있으면 로컬 설정보다 우선 사용됩니다.
 
 ## 사용법
 
@@ -43,19 +41,13 @@ rtzr audio.mp3 --json                              # 원본 API 응답 JSON을 s
 | `--domain <GENERAL\|CALL>` | 도메인 | — |
 | `--json` | 파일 출력 대신 원본 응답 JSON을 stdout에 출력 | off |
 
-`rtzr configure`로 언제든 키를 다시 저장할 수 있습니다.
+## 라이브러리로 사용
 
-## 개발
+이 패키지는 CLI 바이너리(`rtzr`) 겸 라이브러리입니다. 설정 로딩 헬퍼와 `@spencer0124/rtzr-core`의 전체
+표면(클라이언트, 포맷터, 스키마)을 함께 export합니다.
 
-```bash
-pnpm install
-pnpm build
-pnpm typecheck
-pnpm test
-pnpm --filter @spencer0124/rtzr-core test:coverage   # core 커버리지 리포트
+```ts
+import { loadCredentials, RtzrClient } from "@spencer0124/rtzr-cli";
 ```
 
-## 구조
-
-- `packages/core` — `@spencer0124/rtzr-core`: 환경 중립 라이브러리(인증·업로드·폴링·포맷터).
-- `packages/cli` — `@spencer0124/rtzr-cli`: `rtzr` CLI 겸 라이브러리(commander 기반, Whisper 호환 플래그).
+더 자세한 내용은 GitHub 저장소를 참고하세요: https://github.com/spencer0124/rtzr-cli

@@ -9,6 +9,6 @@
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
-    "dev": "pnpm --filter @seungyongcho/rtzr-cli run dev"
+    "dev": "pnpm --filter @spencer0124/rtzr-cli run dev"
   }
 }

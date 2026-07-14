@@ -1,5 +1,5 @@
 {
-  "name": "@seungyongcho/rtzr-core",
+  "name": "@spencer0124/rtzr-core",
   "version": "0.1.0",
   "description": "Environment-neutral core library for the RTZR (Return Zero) STT API — auth, submit, poll, parse, formatters.",
   "type": "module",

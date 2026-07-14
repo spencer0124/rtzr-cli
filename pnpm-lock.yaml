@@ -10,7 +10,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@seungyongcho/rtzr-core':
+      '@spencer0124/rtzr-core':
         specifier: workspace:*
         version: link:../core
       commander:

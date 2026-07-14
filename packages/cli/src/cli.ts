@@ -4,8 +4,8 @@ import { basename, extname } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Command, Option } from "commander";
 import { glob, isDynamicPattern } from "tinyglobby";
-import type { TranscribeConfig } from "@seungyongcho/rtzr-core";
-import { RtzrApiError, RtzrClient, RtzrTimeoutError, toJson, transcribeConfigSchema } from "@seungyongcho/rtzr-core";
+import type { TranscribeConfig } from "@spencer0124/rtzr-core";
+import { RtzrApiError, RtzrClient, RtzrTimeoutError, toJson, transcribeConfigSchema } from "@spencer0124/rtzr-core";
 import { configFilePath, loadCredentials, saveCredentials } from "./config.js";
 import { resolveFormats, writeOutputs } from "./output.js";
 
