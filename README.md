@@ -6,7 +6,8 @@
 [![npm](https://img.shields.io/npm/v/%40spencer0124%2Frtzr-cli?style=for-the-badge&logo=npm&color=CB3837)](https://www.npmjs.com/package/@spencer0124/rtzr-cli)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare_Workers-live-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 
-![alt text](image.png)
+![rtzr-cli banner](assets/banner.png)
+
 Whisper처럼 쓰는 [RTZR (Return Zero)](https://developers.rtzr.ai/) CLI & MCP
 
 - 🎙️ **Whisper처럼 쓰는 CLI** — 익숙한 플래그, 파일·글롭 입력
