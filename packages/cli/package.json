@@ -1,0 +1,43 @@
+{
+  "name": "@seungyongcho/rtzr-cli",
+  "version": "0.1.0",
+  "description": "Whisper-style CLI for the RTZR (Return Zero) STT API — speaker diarization, keyword boosting, ITN. Unofficial third-party tool.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "rtzr": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@seungyongcho/rtzr-core": "workspace:*",
+    "commander": "^12.1.0",
+    "env-paths": "^3.0.0",
+    "tinyglobby": "^0.2.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

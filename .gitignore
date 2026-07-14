@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# secrets — never commit real keys
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+
+# local CLI config (rtzr configure writes outside the repo, but just in case)
+.rtzr/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+
+# editor
+.vscode/
+.idea/
+
+# test/coverage
+coverage/
+
+# internal planning docs — concept.md itself says not to publish this,
+# and guide_for_work.pdf/company_introduction.pdf are the intern assignment
+# materials CLAUDE.md says must never be referenced in the public repo.
+docs/
+
+# scratch artifacts from live API test runs — not curated examples
+out/
+out_diarized/
+test_audio/
