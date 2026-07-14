@@ -15,5 +15,11 @@
   // the Cloudflare dashboard). Declared here too so a clean `wrangler deploy`
   // reproduces the same routing instead of only living in the dashboard.
   // Custom Domains take a bare hostname only — no wildcard/path, unlike zone Routes.
-  "routes": [{ "pattern": "rtzr.seungyongcho.com", "custom_domain": true }]
+  "routes": [{ "pattern": "rtzr.seungyongcho.com", "custom_domain": true }],
+  // Backs request_upload_url / GET,PUT /uploads/:id (src/uploadUrl.ts) — a
+  // presigned direct-upload flow that replaced the earlier KV-based
+  // upload_chunk tool, which didn't actually solve the problem (see
+  // LESSONS.md #9): chunking a base64 blob doesn't reduce the total text the
+  // *calling model* has to generate, only the size of any one piece.
+  "r2_buckets": [{ "binding": "UPLOADS_R2", "bucket_name": "rtzr-uploads" }]
 }

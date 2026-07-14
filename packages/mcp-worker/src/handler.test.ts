@@ -78,6 +78,21 @@ describe("resolveAudioInput", () => {
     const { filename } = await resolveAudioInput("aGk=", "clip.wav");
     expect(filename).toBe("clip.wav");
   });
+
+  it("decodes a base64 input just under the inline size limit without throwing", async () => {
+    // 1,000,000 raw bytes (~1MB) — comfortably under the 3MB guard
+    const oneMbBase64 = btoa("x".repeat(1_000_000));
+    const { bytes } = await resolveAudioInput(oneMbBase64, undefined);
+    expect(bytes.length).toBe(1_000_000);
+  });
+
+  it("rejects base64 input over the inline size limit with a message pointing to URL/upload_chunk", async () => {
+    // length chosen so the *estimated* decoded size (length * 3/4) clears 3MB
+    // without actually needing to construct real audio data.
+    const oversized = "A".repeat(4_300_000);
+    await expect(resolveAudioInput(oversized, undefined)).rejects.toThrow(/upload_chunk/);
+    await expect(resolveAudioInput(oversized, undefined)).rejects.toThrow(/http\(s\) URL/);
+  });
 });
 
 describe("resolveCredentials", () => {
@@ -118,6 +133,27 @@ describe("handleTranscribe", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/X-RTZR-CLIENT-ID/);
+  });
+
+  it("uses preResolvedAudio directly, skipping resolveAudioInput/fetch entirely for `input`", async () => {
+    // index.ts uses this for its own uploaded files (read straight out of R2 in
+    // the same Worker invocation) — a Worker fetching its own public URL back
+    // isn't reliable (production 522s), so this path never touches `input` at all.
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(authOk())
+      .mockResolvedValueOnce(jsonResponse(200, { id: "job-1" }))
+      .mockResolvedValueOnce(completedPoll("from upload"));
+
+    const result = await handleTranscribe({ input: "ignored-should-never-be-read" }, CREDS, {
+      fetchImpl,
+      preResolvedAudio: { bytes: new Uint8Array([1, 2, 3]), filename: "clip.mp3" },
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toBe("from upload");
+    // only auth+submit+poll — no extra fetch for `input` itself
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it("transcribes base64 input and returns plain text by default", async () => {

@@ -101,6 +101,18 @@ const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
   "audio/flac": "flac",
 };
 
+/**
+ * Base64 has to be inlined directly into the tool call (MCP/JSON-RPC has no
+ * binary framing), which means it flows through the *calling model's own*
+ * context/output budget. A real client hit this in practice: it tried to
+ * base64-encode a ~50s clip, then re-read that huge string through its own
+ * (truncating) file-read tool to double-check it, corrupting the data before
+ * it ever reached us. Failing fast here with a clear alternative (URL or
+ * upload_chunk) is cheaper than letting a caller discover the limit by
+ * fighting with it — see LESSONS.md #9.
+ */
+export const MAX_INLINE_BASE64_BYTES = 3 * 1024 * 1024; // ~3MB decoded, roughly a minute of compressed voice
+
 function basenameFromUrl(url: string): string | undefined {
   try {
     const pathname = new URL(url).pathname;
@@ -121,6 +133,10 @@ export async function resolveAudioInput(
   filename: string | undefined,
   // bound, not bare — see the matching note in packages/core/src/client.ts
   fetchImpl: typeof fetch = fetch.bind(globalThis),
+  // upload.ts's finishUpload passes Infinity here: chunked uploads already
+  // enforce their own per-chunk/total-chunk limits before reassembly, so this
+  // single-shot guard (meant for one giant blob in one tool call) doesn't apply.
+  maxInlineBytes: number = MAX_INLINE_BASE64_BYTES,
 ): Promise<{ bytes: Uint8Array; filename: string }> {
   if (isHttpUrl(input)) {
     const res = await fetchImpl(input);
@@ -134,14 +150,42 @@ export async function resolveAudioInput(
     return { bytes, filename: resolvedName };
   }
 
+  // Cheap pre-check on the *encoded* length before spending CPU/memory on
+  // atob() — base64 expands raw bytes by ~4/3, so we can estimate first.
+  const estimatedBytes = Math.floor((input.length * 3) / 4);
+  if (estimatedBytes > maxInlineBytes) {
+    const mb = (estimatedBytes / (1024 * 1024)).toFixed(1);
+    const limitMb = maxInlineBytes / (1024 * 1024);
+    throw new Error(
+      `base64 input is ~${mb}MB, over the ${limitMb}MB inline limit. Base64 must fit inside the tool ` +
+        "call itself, so it's only practical for short clips. For longer audio, host the file and pass " +
+        "an http(s) URL instead, or use the upload_chunk tool to send it in pieces.",
+    );
+  }
+
   return { bytes: base64ToBytes(input), filename: filename ?? "audio.mp3" };
+}
+
+export interface HandleTranscribeOptions {
+  fetchImpl?: typeof fetch;
+  /** Override for resolveAudioInput's inline-base64 guard — see its own doc comment. */
+  maxInlineBase64Bytes?: number;
+  /**
+   * Skips resolveAudioInput entirely when the caller already has the bytes in
+   * hand — used by index.ts for its own uploaded files (read directly out of
+   * R2 in the same Worker invocation). Reusing resolveAudioInput's URL-fetch
+   * path there would mean the Worker calling its own public URL, which
+   * Cloudflare's edge doesn't reliably support for same-zone subrequests
+   * (observed as intermittent 522s in production — see LESSONS.md #9).
+   */
+  preResolvedAudio?: { bytes: Uint8Array; filename: string };
 }
 
 /** Orchestrates one `transcribe` tool call: validate -> resolve audio -> call core -> format. */
 export async function handleTranscribe(
   toolInput: TranscribeToolInput,
   creds: RtzrHeaderCredentials,
-  opts: { fetchImpl?: typeof fetch } = {},
+  opts: HandleTranscribeOptions = {},
 ): Promise<McpToolResult> {
   if (!creds.clientId || !creds.clientSecret) {
     return textResult(
@@ -172,7 +216,14 @@ export async function handleTranscribe(
   const fetchImpl = opts.fetchImpl;
 
   try {
-    const { bytes, filename } = await resolveAudioInput(toolInput.input, toolInput.filename, fetchImpl);
+    const { bytes, filename } = opts.preResolvedAudio
+      ? opts.preResolvedAudio
+      : await resolveAudioInput(
+          toolInput.input,
+          toolInput.filename,
+          fetchImpl,
+          opts.maxInlineBase64Bytes ?? MAX_INLINE_BASE64_BYTES,
+        );
     const client = new RtzrClient({ clientId: creds.clientId, clientSecret: creds.clientSecret }, { fetchImpl });
     const result = await client.transcribe(bytes, filename, validated.data);
 
