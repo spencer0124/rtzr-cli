@@ -1,5 +1,5 @@
 {
-  "name": "@seungyongcho/rtzr-core",
+  "name": "@spencer0124/rtzr-core",
   "version": "0.1.0",
   "description": "Environment-neutral core library for the RTZR (Return Zero) STT API — auth, submit, poll, parse, formatters.",
   "type": "module",
@@ -23,13 +23,15 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
+    "@vitest/coverage-v8": "^2.1.4",
     "tsup": "^8.3.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"

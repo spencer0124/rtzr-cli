@@ -33,11 +33,12 @@ export function buildRequestConfig(cfg: TranscribeConfig): Record<string, unknow
   if (cfg.useDisfluencyFilter !== undefined) out.use_disfluency_filter = cfg.useDisfluencyFilter;
   if (cfg.useProfanityFilter !== undefined) out.use_profanity_filter = cfg.useProfanityFilter;
 
-  if (cfg.useParagraphSplitter !== undefined) {
-    out.use_paragraph_splitter = cfg.useParagraphSplitter;
-    if (cfg.paragraphSplitterMax !== undefined) {
-      out.paragraph_splitter = { max: cfg.paragraphSplitterMax };
-    }
+  if (cfg.useParagraphSplitter !== undefined) out.use_paragraph_splitter = cfg.useParagraphSplitter;
+  // Deliberately not gated on useParagraphSplitter: the API accepts
+  // paragraph_splitter.max on its own (it only has *effect* when the splitter
+  // is on) — see docs/rtzr-config-constraints.md C6/T3.
+  if (cfg.paragraphSplitterMax !== undefined) {
+    out.paragraph_splitter = { max: cfg.paragraphSplitterMax };
   }
 
   if (cfg.domain !== undefined) out.domain = cfg.domain;
@@ -47,6 +48,12 @@ export function buildRequestConfig(cfg: TranscribeConfig): Record<string, unknow
   return out;
 }
 
+interface RawWordTimestamp {
+  start_at: number;
+  duration: number;
+  text: string;
+}
+
 interface RawUtterance {
   start_at: number;
   duration: number;
@@ -54,6 +61,8 @@ interface RawUtterance {
   spk?: number;
   spk_type?: string;
   lang?: string;
+  /** Present only when the request set `use_word_timestamp: true`. */
+  words?: RawWordTimestamp[];
 }
 
 interface RawCompletedResponse {
@@ -74,6 +83,7 @@ export function parseTranscript(raw: unknown): TranscriptResult {
     spk: u.spk,
     spkType: u.spk_type,
     lang: u.lang,
+    words: u.words?.map((w) => ({ startAt: w.start_at, duration: w.duration, text: w.text })),
   }));
 
   return { utterances, raw };

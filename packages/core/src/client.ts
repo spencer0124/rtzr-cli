@@ -72,7 +72,13 @@ export class RtzrClient {
     opts: RtzrClientOptions = {},
   ) {
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // Bind, don't pass the bare reference: calling `this.fetchImpl(...)` below
+    // invokes it with `this` = the RtzrClient instance, not the receiver the
+    // Workers/browser fetch implementation expects, which throws "Illegal
+    // invocation" at runtime. Node's fetch is lenient about this and never
+    // catches it under vitest — only surfaced by actually running on
+    // Cloudflare Workers (see packages/mcp-worker, LESSONS.md #8).
+    this.fetchImpl = opts.fetchImpl ?? fetch.bind(globalThis);
     this.sleepImpl = opts.sleepImpl ?? defaultSleep;
   }
 

@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import envPaths from "env-paths";
-import type { RtzrCredentials } from "@seungyongcho/rtzr-core";
+import type { RtzrCredentials } from "@spencer0124/rtzr-core";
 
 /**
  * Key loading lives in the CLI, not in `core` — core stays environment-neutral

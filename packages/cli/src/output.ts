@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { toJson, toSrt, toTxt, toVtt } from "@seungyongcho/rtzr-core";
-import type { TranscriptResult } from "@seungyongcho/rtzr-core";
+import { toJson, toSrt, toTxt, toVtt } from "@spencer0124/rtzr-core";
+import type { TranscriptResult } from "@spencer0124/rtzr-core";
 
 export type OutputFormat = "txt" | "srt" | "vtt" | "json" | "all";
 
