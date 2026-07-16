@@ -143,8 +143,7 @@ claude mcp add --transport http rtzr https://rtzr.seungyongcho.com/mcp \
 ```
 
 - 헤더 생략 시 데모용 공유 키로 폴백합니다. 다른 사용자와 RTZR 쿼터를 같이 쓰는 체험용입니다.
-- 진지하게 쓰려면 BYO-key 헤더로 자기 키를 넣으세요.
-- 서버는 어느 쪽 키든 **저장하지 않습니다**. 해당 요청을 처리하는 동안만 메모리에서 씁니다.
+- 서버는 어느 쪽 키든 **저장하지 않습니다**.
 
 ## 🧰 Tools
 

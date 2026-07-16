@@ -12,7 +12,6 @@ claude mcp add --transport http rtzr https://rtzr.seungyongcho.com/mcp \
 ```
 
 헤더를 생략해도 동작합니다. 데모용 공유 키로 폴백하기 때문입니다(아래 "설계"의 인증 참고).
-진지하게 쓰려면 자기 키를 헤더로 넣으세요.
 
 ## `transcribe` tool
 
