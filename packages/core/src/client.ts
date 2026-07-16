@@ -7,7 +7,7 @@ import { buildRequestConfig, parseTranscript } from "./mapping.js";
 import { errorFromResponse, RtzrApiError, RtzrTimeoutError } from "./errors.js";
 
 /**
- * ⚠ Environment-neutral by design (docs/concept.md §5):
+ * ⚠ Environment-neutral by design (internal-docs/concept.md §5):
  * this file must never import `fs` or read `process.env` directly.
  * Audio comes in as bytes, credentials come in as arguments — that's what
  * lets the exact same class run in a Node CLI and a Cloudflare Worker.

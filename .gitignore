@@ -33,12 +33,14 @@ pnpm-debug.log*
 # test/coverage
 coverage/
 
-# internal planning docs — concept.md itself says not to publish this,
-# and guide_for_work.pdf/company_introduction.pdf are the intern assignment
-# materials CLAUDE.md says must never be referenced in the public repo.
-docs/
+# internal-only docs — concept.md itself says not to publish it,
+# guide_for_work.pdf/company_introduction.pdf are the intern assignment
+# materials, and rtzr-api-raw.md is a scrape of RTZR's official docs.
+# Public docs live in docs/ (committed).
+internal-docs/
 
 # scratch artifacts from live API test runs — not curated examples
 out/
 out_diarized/
+out_test/
 test_audio/

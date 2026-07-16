@@ -1,6 +1,7 @@
 # RTZR-CLI & MCP
 
 ![rtzr-cli banner](assets/banner.png)
+
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-workspaces-F69220?style=for-the-badge&logo=pnpm&logoColor=white)
@@ -127,8 +128,8 @@ npx @spencer0124/rtzr-cli audio.mp3 --language ko --output_format srt --output_d
 
 # (2) MCP
 
-Claude Code 등 MCP 클라이언트에서 바로 붙일 수 있는 **원격 MCP 서버** — Cloudflare Workers 배포,
-stateless, `@spencer0124/rtzr-core` 재사용.
+Claude Code 등 MCP 클라이언트에서 바로 붙일 수 있는 **원격 MCP 서버**입니다. Cloudflare Workers에
+배포된 stateless 서버이고, `@spencer0124/rtzr-core`를 재사용합니다.
 
 ## 🔌 Setup
 
@@ -141,9 +142,9 @@ claude mcp add --transport http rtzr https://rtzr.seungyongcho.com/mcp \
   --header "X-RTZR-CLIENT-ID: ..." --header "X-RTZR-CLIENT-SECRET: ..."
 ```
 
-- 헤더 생략 시 데모용 공유 키로 폴백합니다 — 다른 사용자와 RTZR 쿼터를 같이 쓰는 체험용.
+- 헤더 생략 시 데모용 공유 키로 폴백합니다. 다른 사용자와 RTZR 쿼터를 같이 쓰는 체험용입니다.
 - 진지하게 쓰려면 BYO-key 헤더로 자기 키를 넣으세요.
-- 서버는 어느 쪽 키든 **저장하지 않습니다** — 해당 요청을 처리하는 동안만 메모리에서 사용.
+- 서버는 어느 쪽 키든 **저장하지 않습니다**. 해당 요청을 처리하는 동안만 메모리에서 씁니다.
 
 ## 🧰 Tools
 
@@ -168,25 +169,27 @@ claude mcp add --transport http rtzr https://rtzr.seungyongcho.com/mcp \
 | `domain`               | `GENERAL` \| `CALL`                         | `GENERAL`     | 오디오 도메인 힌트                                                                      |
 | `format`               | `txt` \| `srt` \| `vtt` \| `json`           | `txt`         | 출력 포맷                                                                               |
 
-> **base64는 짧은 클립에만.** base64는 tool 호출 자체에 인라인되어 호출자(LLM)의 컨텍스트를 그대로
-> 거치므로, 디코드 후 3MB(대략 1분 내외의 압축 음성) 초과 시 즉시 에러로 거부합니다. 더 긴 파일은 아래
-> `request_upload_url`을 쓰세요.
+> **base64는 짧은 클립 전용입니다.** tool 호출에 인라인되어 LLM 컨텍스트를 그대로 거칩니다.
+> 디코드 후 3MB(약 1분 분량)를 넘으면 즉시 에러로 거부합니다. 긴 파일은 아래 `request_upload_url`을 쓰세요.
 
 ### `request_upload_url` (긴 파일용)
 
-base64로 넣기엔 큰 오디오(3MB↑)를 위한 프리사인 업로드 흐름:
+3MB를 넘는 오디오는 프리사인 업로드로 보냅니다.
 
-1. tool을 호출하면 **1회용 프리사인 URL + 그대로 실행 가능한 `curl -X PUT` 명령**을 돌려줍니다.
-2. 그 curl을 **자기 코드 실행 샌드박스에서 직접** 실행 — 파일 바이트가 LLM 컨텍스트를 거치지 않고
-   바로 서버로 스트리밍됩니다.
-3. 업로드가 끝나면 반환된 fetch URL을 `transcribe`의 `input`으로 넘깁니다.
+1. tool을 호출하면 **1회용 업로드 URL과 실행 가능한 `curl -X PUT` 명령**을 돌려줍니다.
+2. 그 curl을 코드 실행 샌드박스에서 실행합니다. 파일은 LLM 컨텍스트를 거치지 않습니다.
+3. 반환된 fetch URL을 `transcribe`의 `input`으로 넘깁니다.
 
-- **제약**: 만료 5분 · 1회 사용 · 최대 20MB.
-- **주의**: claude.ai 같은 코드 실행 환경은 아웃바운드 네트워크가 기본 차단 — curl이 실패하면
-  Settings → Capabilities에서 이 도메인을 허용 목록에 추가해야 합니다(1회성 수동 단계).
-- **왜 base64 청킹이 아닌가**: 청크로 쪼개도 LLM이 생성해야 하는 총 텍스트 양은 그대로라 근본 해결이
-  아니었습니다 — 자세한 배경은 [`packages/mcp-worker/README.md`](packages/mcp-worker/README.md)와
-  `LESSONS.md` #9 참고.
+| 제약     | 값   |
+| -------- | ---- |
+| 만료     | 5분  |
+| 사용     | 1회  |
+| 최대크기 | 20MB |
+
+- claude.ai에서는 아웃바운드 네트워크가 기본 차단입니다. curl이 실패하면 Settings → Capabilities에서
+  이 도메인을 허용하세요.
+- base64 청킹은 LLM이 생성할 텍스트 양을 줄이지 못해 폐기했습니다. 배경은
+  [`packages/mcp-worker/README.md`](packages/mcp-worker/README.md)와 `LESSONS.md` #9를 참고하세요.
 
 <br><br>
 
@@ -200,6 +203,10 @@ pnpm test
 pnpm --filter @spencer0124/rtzr-core test:coverage   # core 커버리지 리포트
 ```
 
-`packages/core`는 TDD로 백필된 58개 유닛테스트(커버리지 98%+)로 인증/업로드/폴링/포맷/스키마 검증을
-전부 fetch mock으로 검증합니다. `packages/mcp-worker`도 같은 패턴(주입 가능한 `fetchImpl`)으로 검증되고,
-Worker 배선 자체는 `wrangler dev` + 실제 tool 호출로 별도 확인합니다.
+| 패키지     | 테스트 | 방식                                              |
+| ---------- | ------ | ------------------------------------------------- |
+| core       | 79개   | fetch mock 유닛테스트, 커버리지 98%+              |
+| mcp-worker | 33개   | core와 같은 패턴(주입 가능한 `fetchImpl`)         |
+| cli        | 10개   | 빌드된 `dist/cli.js`를 서브프로세스로 실행하는 통합 테스트 |
+
+Worker 배선은 `wrangler dev`와 실제 tool 호출로 별도 확인합니다.

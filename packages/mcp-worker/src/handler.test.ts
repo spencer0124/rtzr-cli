@@ -87,11 +87,11 @@ describe("resolveAudioInput", () => {
     expect(bytes.length).toBe(1_000_000);
   });
 
-  it("rejects base64 input over the inline size limit with a message pointing to URL/upload_chunk", async () => {
+  it("rejects base64 input over the inline size limit with a message pointing to URL/request_upload_url", async () => {
     // length chosen so the *estimated* decoded size (length * 3/4) clears 3MB
     // without actually needing to construct real audio data.
     const oversized = "A".repeat(4_300_000);
-    await expect(resolveAudioInput(oversized, undefined)).rejects.toThrow(/upload_chunk/);
+    await expect(resolveAudioInput(oversized, undefined)).rejects.toThrow(/request_upload_url/);
     await expect(resolveAudioInput(oversized, undefined)).rejects.toThrow(/http\(s\) URL/);
   });
 });

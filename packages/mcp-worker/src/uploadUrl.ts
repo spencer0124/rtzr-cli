@@ -2,7 +2,7 @@
  * HMAC-SHA256 signing for presigned upload URLs — the `request_upload_url`
  * MCP tool hands out `/uploads/{id}?expires=...&sig=...` for a caller's code
  * execution sandbox to `curl -X PUT` directly (bypassing the model's own
- * context entirely, unlike base64-in-tool-call). See docs/concept.md §8.3
+ * context entirely, unlike base64-in-tool-call). See internal-docs/concept.md §8.3
  * and LESSONS.md #9 for why chunked base64 wasn't a real fix.
  *
  * Uses the Web Crypto API (`crypto.subtle`), which is a global in both

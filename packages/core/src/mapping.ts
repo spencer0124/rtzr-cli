@@ -3,12 +3,12 @@ import type { TranscribeConfig, TranscriptResult, Utterance } from "./types.js";
 /**
  * Pure mapping functions between our camelCase `TranscribeConfig`/`TranscriptResult`
  * and the RTZR API's snake_case wire format. Kept separate from client.ts so they're
- * trivially unit-testable without mocking fetch. See docs/concept.md §5.
+ * trivially unit-testable without mocking fetch. See internal-docs/concept.md §5.
  */
 
 /**
  * Builds the `config` JSON object sent as a multipart field to POST /v1/transcribe.
- * Two API quirks this must get right (see docs/concept.md — corrected from initial
+ * Two API quirks this must get right (see internal-docs/concept.md — corrected from initial
  * assumptions after reading the real API docs):
  *  - `spk_count` is nested under `diarization`, not a flat field.
  *  - `keywords` is a plain string array; there is no per-word score/weight syntax.
