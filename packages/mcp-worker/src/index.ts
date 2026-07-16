@@ -19,7 +19,7 @@ const UPLOAD_TTL_MS = 5 * 60_000;
  * packages/cli/src/cli.ts. All real logic (input resolution, calling core,
  * formatting, error handling, credential resolution, upload signing) lives
  * in handler.ts/uploadUrl.ts, which ARE tested. This file is verified with
- * `wrangler dev` + real tool/HTTP calls instead — see docs/concept.md §8.3.
+ * `wrangler dev` + real tool/HTTP calls instead — see internal-docs/concept.md §8.3.
  *
  * Stateless by design (createMcpHandler, no McpAgent/Durable Objects): the
  * `transcribe` tool is one self-contained call per request, so there's no
@@ -55,7 +55,7 @@ function createServer(creds: RtzrHeaderCredentials, host: string, uploads: R2Buc
   // Reuses core's schema for the fields that share both name and shape with
   // TranscribeConfig (see packages/core/src/schema.ts's doc comment); diarize/
   // speakers/model/format/input/filename are this tool's own simplified,
-  // renamed surface per docs/concept.md §8.1 and don't map 1:1 onto
+  // renamed surface per internal-docs/concept.md §8.1 and don't map 1:1 onto
   // TranscribeConfig's field names. Defaults quoted below are RTZR's actual
   // API defaults (confirmed against developers.rtzr.ai/docs/stt-file/,
   // 2026-07-14) — this tool previously omitted itn/disfluencyFilter/

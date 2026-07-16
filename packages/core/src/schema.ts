@@ -6,7 +6,7 @@ import { z } from "zod";
  * The CLI derives its flag validation from this schema, and `packages/mcp-worker`
  * derives its `transcribe` tool's inputSchema from the same object — so a new
  * option added here is automatically enforced in both surfaces without
- * redefining it twice. See docs/concept.md §5.
+ * redefining it twice. See internal-docs/concept.md §5.
  *
  * Exported as the *unrefined* object (not `transcribeConfigSchema` below) because
  * MCP's `server.registerTool()` needs a plain `ZodObject`/shape, not a `ZodEffects` —

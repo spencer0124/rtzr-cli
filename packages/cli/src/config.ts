@@ -5,7 +5,7 @@ import type { RtzrCredentials } from "@spencer0124/rtzr-core";
 
 /**
  * Key loading lives in the CLI, not in `core` — core stays environment-neutral
- * (docs/concept.md §5) and only ever receives credentials as arguments.
+ * (internal-docs/concept.md §5) and only ever receives credentials as arguments.
  *
  * Priority: environment variables > local config file > none (caller decides
  * what to do, e.g. prompt the user to run `rtzr configure`).

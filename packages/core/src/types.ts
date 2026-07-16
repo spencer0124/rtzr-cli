@@ -3,7 +3,7 @@
  *
  * These types are environment-neutral by design: no `fs`, no `process.env`.
  * Audio is always bytes (`Blob | Uint8Array`), credentials are always passed
- * as arguments. See docs/concept.md §5 for the design rationale — this is
+ * as arguments. See internal-docs/concept.md §5 for the design rationale — this is
  * what lets the same `core` run unmodified in Node CLI, Cloudflare Workers
  * (MCP), and (roadmap) a Pages Functions web backend.
  */

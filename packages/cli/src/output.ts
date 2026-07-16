@@ -27,7 +27,7 @@ export function resolveFormats(format: string): Exclude<OutputFormat, "all">[] {
 
 /**
  * Writes one file per requested format as `<outputDir>/<baseName>.<ext>`, always
- * UTF-8 (docs/concept.md §6.5 — avoids cp949 mangling on Windows consoles).
+ * UTF-8 (internal-docs/concept.md §6.5 — avoids cp949 mangling on Windows consoles).
  * Returns the written file paths.
  */
 export function writeOutputs(

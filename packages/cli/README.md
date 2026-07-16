@@ -1,7 +1,7 @@
 # @spencer0124/rtzr-cli
 
-Whisper처럼 쓰는 [RTZR (Return Zero)](https://developers.rtzr.ai/) STT CLI — 화자분리·키워드부스팅·ITN 지원.
-리턴제로의 공식 도구가 아닌, RTZR STT API를 활용한 비공식 CLI/라이브러리입니다.
+Whisper처럼 쓰는 [RTZR (Return Zero)](https://developers.rtzr.ai/) STT CLI입니다. 화자분리·키워드부스팅·ITN을
+지원합니다. 리턴제로의 공식 도구가 아닌, RTZR STT API를 활용한 비공식 CLI/라이브러리입니다.
 
 ```bash
 npx @spencer0124/rtzr-cli audio.mp3 --diarize
@@ -34,10 +34,13 @@ rtzr audio.mp3 --json                              # 원본 API 응답 JSON을 s
 | `--diarize` | 화자분리(`use_diarization`) 활성화 | off |
 | `--speakers <n>` | 예상 화자 수, `0`=자동(`spk_count`) | — |
 | `--keywords <kw...>` | 키워드 부스팅(가중치 문법 없음) | — |
+| `--language-candidates <langs...>` | 언어 감지 후보군(`--model whisper` 전용) | `ko/ja/zh/en` |
 | `--itn` / `--no-itn` | 역정규화(ITN) | on |
 | `--profanity-filter` | 비속어 필터 | off |
 | `--disfluency-filter` / `--no-disfluency-filter` | 간투어 필터 | on |
-| `--word-timestamps` | 단어별 타임스탬프 포함 | off |
+| `--paragraph-splitter` / `--no-paragraph-splitter` | 문단 나누기 | on |
+| `--paragraph-max <n>` | 문단 최대 글자 수(문단 나누기 on일 때만) | `50` |
+| `--word-timestamps` | 단어별 타임스탬프 포함(`--json`에서만 확인 가능) | off |
 | `--domain <GENERAL\|CALL>` | 도메인 | — |
 | `--json` | 파일 출력 대신 원본 응답 JSON을 stdout에 출력 | off |
 

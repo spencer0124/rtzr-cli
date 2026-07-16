@@ -123,7 +123,7 @@ const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
  * base64-encode a ~50s clip, then re-read that huge string through its own
  * (truncating) file-read tool to double-check it, corrupting the data before
  * it ever reached us. Failing fast here with a clear alternative (URL or
- * upload_chunk) is cheaper than letting a caller discover the limit by
+ * request_upload_url) is cheaper than letting a caller discover the limit by
  * fighting with it — see LESSONS.md #9.
  */
 export const MAX_INLINE_BASE64_BYTES = 3 * 1024 * 1024; // ~3MB decoded, roughly a minute of compressed voice
@@ -148,10 +148,6 @@ export async function resolveAudioInput(
   filename: string | undefined,
   // bound, not bare — see the matching note in packages/core/src/client.ts
   fetchImpl: typeof fetch = fetch.bind(globalThis),
-  // upload.ts's finishUpload passes Infinity here: chunked uploads already
-  // enforce their own per-chunk/total-chunk limits before reassembly, so this
-  // single-shot guard (meant for one giant blob in one tool call) doesn't apply.
-  maxInlineBytes: number = MAX_INLINE_BASE64_BYTES,
 ): Promise<{ bytes: Uint8Array; filename: string }> {
   if (isHttpUrl(input)) {
     const res = await fetchImpl(input);
@@ -168,13 +164,13 @@ export async function resolveAudioInput(
   // Cheap pre-check on the *encoded* length before spending CPU/memory on
   // atob() — base64 expands raw bytes by ~4/3, so we can estimate first.
   const estimatedBytes = Math.floor((input.length * 3) / 4);
-  if (estimatedBytes > maxInlineBytes) {
+  if (estimatedBytes > MAX_INLINE_BASE64_BYTES) {
     const mb = (estimatedBytes / (1024 * 1024)).toFixed(1);
-    const limitMb = maxInlineBytes / (1024 * 1024);
+    const limitMb = MAX_INLINE_BASE64_BYTES / (1024 * 1024);
     throw new Error(
       `base64 input is ~${mb}MB, over the ${limitMb}MB inline limit. Base64 must fit inside the tool ` +
         "call itself, so it's only practical for short clips. For longer audio, host the file and pass " +
-        "an http(s) URL instead, or use the upload_chunk tool to send it in pieces.",
+        "an http(s) URL instead, or use the request_upload_url tool to stream the file directly.",
     );
   }
 
@@ -183,8 +179,6 @@ export async function resolveAudioInput(
 
 export interface HandleTranscribeOptions {
   fetchImpl?: typeof fetch;
-  /** Override for resolveAudioInput's inline-base64 guard — see its own doc comment. */
-  maxInlineBase64Bytes?: number;
   /**
    * Skips resolveAudioInput entirely when the caller already has the bytes in
    * hand — used by index.ts for its own uploaded files (read directly out of
@@ -231,7 +225,7 @@ export const MCP_FIELD_LABELS: ConfigFieldLabels = {
 };
 
 export function buildTranscribeConfig(toolInput: TranscribeToolInput): TranscribeConfig {
-  // Mirror the CLI's `-l/--language` default of "ko" (docs/concept.md §8.1) — except
+  // Mirror the CLI's `-l/--language` default of "ko" (internal-docs/concept.md §8.1) — except
   // when modelName is "whisper" and no language was given: silently defaulting there
   // would hide the fact that whisper requires an explicit language, so we leave it
   // undefined and let transcribeConfigSchema's cross-field rule catch it below.
@@ -279,12 +273,7 @@ export async function handleTranscribe(
   try {
     const { bytes, filename } = opts.preResolvedAudio
       ? opts.preResolvedAudio
-      : await resolveAudioInput(
-          toolInput.input,
-          toolInput.filename,
-          fetchImpl,
-          opts.maxInlineBase64Bytes ?? MAX_INLINE_BASE64_BYTES,
-        );
+      : await resolveAudioInput(toolInput.input, toolInput.filename, fetchImpl);
     const client = new RtzrClient({ clientId: creds.clientId, clientSecret: creds.clientSecret }, { fetchImpl });
     const result = await client.transcribe(bytes, filename, validated.data);
 

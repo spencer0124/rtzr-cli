@@ -4,7 +4,7 @@ import { ZodError } from "zod";
  * Error types for the RTZR API client.
  *
  * RTZR's failure responses are consistently shaped as `{ code, msg }` across
- * all three endpoints (see docs/concept.md and the RTZR API docs' error
+ * all three endpoints (see internal-docs/concept.md and the RTZR API docs' error
  * tables), so a single error class covers auth, submit, and poll failures.
  */
 export class RtzrApiError extends Error {
